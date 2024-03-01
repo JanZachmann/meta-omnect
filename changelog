@@ -1,0 +1,15 @@
+
+<a name="4.0.16v1"></a>
+## [4.0.16v1](https://github.com/omnect/meta-omnect/compare/4.0.15v1...4.0.16v1) (2024-02-29)
+
+### Feat
+
+* introduce conventional commit messages ([#396](https://github.com/omnect/meta-omnect/issues/396))
+
+### Fix
+
+* **rpi:** systemd: revert  commit dcfd1a687f6973d436f0d23b77e4a842b94d15d1 ([#400](https://github.com/omnect/meta-omnect/issues/400))
+* **rpi:** systemd: set more meaningful hw watchdog configuration values ([#399](https://github.com/omnect/meta-omnect/issues/399))
+* **rpi:** corrected bootloader version computation ([#397](https://github.com/omnect/meta-omnect/issues/397))
+* **u-boot:** don't use redundant-env-fragment.cfg for bootloader checksum computation ([#401](https://github.com/omnect/meta-omnect/issues/401))
+
