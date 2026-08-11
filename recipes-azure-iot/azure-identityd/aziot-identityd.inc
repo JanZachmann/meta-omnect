@@ -36,6 +36,7 @@ DEPENDS = " \
 
 RDEPENDS:${PN} = " \
     bash \
+    coreutils \
     libtss2-tcti-device \
     toml-cli \
 "
