@@ -1,4 +1,4 @@
-inherit useradd
+inherit useradd pkgconfig
 
 USERADD_PACKAGES = "${PN}"
 GROUPADD_PARAM:${PN} = " \
@@ -28,4 +28,11 @@ do_install:prepend() {
 
     install -d -m 0750 -g aziotks ${D}${sysconfdir}/aziot/keyd
     install -d -m 0700 -o aziotks -g aziotks ${D}${sysconfdir}/aziot/keyd/config.d
+}
+
+# a service skipped by its condition must not fail its socket through the
+# trigger limit: without the limit the socket stays listening, and the first
+# connect after the condition turns true activates the service
+aziot_disable_socket_trigger_limit() {
+    sed -i 's/^\[Socket\]$/[Socket]\nTriggerLimitIntervalSec=0/' "$1"
 }

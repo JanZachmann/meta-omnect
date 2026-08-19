@@ -20,11 +20,11 @@ do_install:append() {
         -e 's#^ExecStart=\(.*\)#EnvironmentFile=-/etc/omnect/systemd-networkd-wait-online.env\nExecStart=\1#' \
         ${D}${systemd_system_unitdir}/systemd-networkd-wait-online.service
 
-    if ${@bb.utils.contains('MACHINE_FEATURES', 'wifi', 'true', 'false', d)}; then
+    if ${@bb.utils.contains('DISTRO_FEATURES', 'wifi', 'true', 'false', d)}; then
         # enable dhcp for wlan devices
-        install -m 0644 ${WORKDIR}/80-wlan.network ${D}${systemd_unitdir}/network
+        install -m 0644 ${UNPACKDIR}/80-wlan.network ${D}${systemd_unitdir}/network
         # prevent renaming wlan0
-        install -m 0644 ${WORKDIR}/80-wlan0.link ${D}${systemd_unitdir}/network
+        install -m 0644 ${UNPACKDIR}/80-wlan0.link ${D}${systemd_unitdir}/network
     fi
 
     # persistent /var/log
@@ -58,6 +58,11 @@ do_install:append() {
 
     # delete systemd-journald-audit.socket - we don't use this feature (yet)
     rm -f ${D}${systemd_system_unitdir}/sockets.target.wants/systemd-journald-audit.socket
+
+    # coredump storage: keep no cores by default on any image, so process memory
+    # (which may hold secrets) is never written to disk. The CI test environment
+    # and per-device debugging enable capture via /etc drop-ins.
+    sed -i 's/^#\?Storage=.*/Storage=none/' ${D}${sysconfdir}/systemd/coredump.conf
     rm -f ${D}${systemd_system_unitdir}/systemd-journald-audit.socket
 
     # sync time on sysinit
@@ -84,7 +89,7 @@ do_install:append() {
 do_install:append:omnect_pstore() {
     install -d ${D}${sysconfdir}/systemd/system/
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/sys-fs-pstore.mount ${D}${systemd_system_unitdir}/sys-fs-pstore.mount
+    install -m 0644 ${UNPACKDIR}/sys-fs-pstore.mount ${D}${systemd_system_unitdir}/sys-fs-pstore.mount
     ln -rs ${D}${systemd_system_unitdir}/sys-fs-pstore.mount ${D}${sysconfdir}/systemd/system/sysinit.target.wants/sys-fs-pstore.mount
 }
 

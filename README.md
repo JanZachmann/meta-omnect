@@ -15,12 +15,13 @@ This yocto meta layer provides the device management distribution `omnect-os`. I
       - **Note**: This feature provides a limited level of data privacy. Please see section [Factory Reset](#factory-reset) below.
     - [Secure Boot for x86 UEFI devices](doc/efi_secure_boot.md).
     - [Mandatory Access Control (AppArmor)](doc/mac_lsm.md): the AppArmor Linux Security Module (LSM) is compiled in and its userspace is installed; DAC stays the default and AppArmor is boot-selectable.
+    - [Wifi commissioning](doc/wifi_commissioning.md): join a Wi-Fi network over a BLE GATT interface or a local Unix-socket API on `wifi`-enabled images.
 - `omnect-os update image`: the [`swupdate`](https://sbabic.github.io/swupdate/swupdate.html) update image with the following implicit features:
     - Updating the bootloader
 
 ### `DISTRO_FEATURES`
 `omnect-os` is built with yocto [`DISTRO_FEATURES`](https://docs.yoctoproject.org/ref-manual/features.html#distro-features) = `apparmor ipv4 ipv6 polkit seccomp xattr zeroconf`.
-Depending on `MACHINE_FEATURES` we also set `3g`, `bluetooth` and `wifi`.
+Depending on `MACHINE_FEATURES` we also set `3g`. `wifi` and `bluetooth` are derived from `/etc/omnect/device_caps.json` instead; see [doc/wifi_commissioning.md](doc/wifi_commissioning.md).
 `apparmor` enables Mandatory Access Control support; see [doc/mac_lsm.md](doc/mac_lsm.md).
 
 `meta-omnect` adds the following `DISTRO_FEATURES`:
@@ -34,10 +35,6 @@ Depending on `MACHINE_FEATURES` we also set `3g`, `bluetooth` and `wifi`.
     - please see section [Flash Modes](#flash-modes) below
 - `resize-data`
     - expands the data partition to available space on first boot
-- [`wifi-commissioning`](https://github.com/omnect/wifi-commissioning-service.git)
-    - adds a service which enables wifi commissioning via BLE GATT and/or Unix socket HTTP REST API
-    - depends on `DISTRO_FEATURES` `wifi` and `bluetooth` which are not added to `DISTRO_FEATURES` automatically!
-    - **note**: BLE interface is intended for demo/initial commissioning; the Unix socket API targets programmatic integration but the service is still in early development (v0.1.0)
 
 ### `MACHINE_FEATURES`
 `meta-omnect` extends the following `MACHINE_FEATURES`:
@@ -102,13 +99,13 @@ Device         Boot   Start      End  Sectors  Size Id Type
 - `OMNECT_PART_SIZE_UBOOT_ENV`: size of one u-boot environment bank (in KiB, decimal)
 
 ## Compatibility
-`meta-omnect` is compatible with the current yocto LTS release branch `scarthgap`.
+`meta-omnect` is compatible with the current yocto LTS release branch `wrynose`.
 
 ## Supported Devices
 See board specific documents [doc](/doc/) folder.
 
 ## Versioning
-We reflect the used yocto version in our version schema. `omnect-os` is versioned `5.0.x.y` where `x` is yocto scarthgap's patch version and `y` is the build number.
+We reflect the used yocto version in our version schema. `omnect-os` is versioned `6.0.x.y` where `x` is yocto wrynose's patch version and `y` is the build number.
 
 ## Dependencies
 Aside from hardware specific meta layers `meta-omnect` depends on:
@@ -177,7 +174,6 @@ docker run --rm \
 ghcr.io/siemens/kas/kas \
 kas build \
 meta-omnect/kas/distro/omnect-os.yaml:\
-meta-omnect/kas/example/wifi-commissioning.yaml:\
 meta-omnect/kas/feature/iotedge.yaml:\
 meta-omnect/kas/feature/persistent-var-log.yaml:\
 meta-omnect/kas/machine/rpi/rpi4.yaml
@@ -186,6 +182,7 @@ meta-omnect/kas/machine/rpi/rpi4.yaml
 The resulting image artifacts are located in `$(pwd)/build/deploy/images/raspberrypi4-64`.<br>
 The `omnect-os-image` artefact is named `omnect-os-raspberrypi4-64.wic.xz`.<br>
 The `omnect-os-update-image` artefact is named `omnect-os-update-image-raspberrypi4-64.swu`.<br>
+Wifi/bluetooth commissioning is controlled per machine by `/etc/omnect/device_caps.json`; see [doc/wifi_commissioning.md](doc/wifi_commissioning.md).
 
 ### Layer prioritization orchestration
 If you want to add additional yocto layers to your build, you can adapt layer priorities in `conf/layer.conf`. This layer is the last in the `BBLAYERS` yocto variable when you build with our `kas` configuration files. If not, you have to possibly adapt layer prioritization values in the last layer included in `BBLAYERS`.
@@ -496,6 +493,24 @@ sudo reboot
 
 **Note1:** The bootloader environment variable `data-mount-options` should be removed at the end of the debugging session.<br>
 **Note2:** It is not advised to use sync mount in operational mode.<br>
+
+### Coredumps
+
+Process crashes are handled by `systemd-coredump`, but **no core is stored by default** on any image (`Storage=none`) - process memory, which may hold secrets, is never written to disk.
+
+To debug a crash on a device, enable both settings per device via the writable `/etc` overlay, then reboot and reproduce:
+```sh
+# 1) complete cores: containerd dumps all memory (inherited by module containers)
+sudo install -d /etc/systemd/system/containerd.service.d
+printf '[Service]\nCoredumpFilter=all\n' | sudo tee /etc/systemd/system/containerd.service.d/10-coredump-filter.conf
+# 2) keep cores on disk
+sudo install -d /etc/systemd/coredump.conf.d
+printf '[Coredump]\nStorage=external\n' | sudo tee /etc/systemd/coredump.conf.d/10-storage.conf
+sudo reboot
+```
+After reproducing, retrieve the core with `coredumpctl` and analyse it with the tooling appropriate for the crashed process (for a .NET module, `dotnet-dump`).
+
+**Note:** a stored core is raw process memory (secrets); enable this only for a debugging session and remove both drop-ins afterwards.
 
 # License
 
