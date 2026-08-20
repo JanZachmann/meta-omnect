@@ -1,3 +1,7 @@
+# The generated .bb sets S = "${WORKDIR}/git", which do_qa_unpack rejects.
+# Restore the oe-core default; this .inc is included after that assignment.
+S = "${UNPACKDIR}/${BP}"
+
 LICENSE = "MIT | Apache-2.0"
 
 LIC_FILES_CHKSUM = "\
