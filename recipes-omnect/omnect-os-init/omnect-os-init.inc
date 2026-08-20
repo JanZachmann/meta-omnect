@@ -25,6 +25,6 @@ do_compile:prepend() {
 
 do_install:append() {
     mv ${D}/usr/bin/omnect-os-init ${D}/init
-    rmdir ${D}/usr/bin
+    rmdir ${D}/usr/bin ${D}/usr
 }
 FILES:${PN} += "init"
